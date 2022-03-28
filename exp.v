@@ -21,14 +21,16 @@ Definition var := string.
 Variable loc : Type.
 Let rec := string -> option loc.
 Definition env := string -> option loc.
-Definition val := (Z + rec).
+Definition val := (Decimal.int + rec).
 Definition mem := loc -> option val.
-Definition emb1 : Z -> val := fun x => inl x.
+Definition emb1 : Decimal.int -> val := fun x => inl x.
 Definition emb2 : rec -> val := fun x => inr x.
-Coercion emb1 : Z >-> val.
+Coercion emb1 : Decimal.int >-> val.
 Coercion emb2 : rec >-> val.
 Hypothesis loc_dec : forall l l' : loc, {l=l'} + {l<>l'}.
 Definition int_of_string := NilEmpty.int_of_string.
+
+Class finmap 
 
 Reserved Notation
          "s ',' m '=[' e ']=>' v ',' m'"
@@ -36,8 +38,9 @@ Reserved Notation
 
 Inductive comp : env -> mem -> string -> val -> mem -> Prop :=
 | CInt s m e n : int_of_string e = Some n -> comp s m e n m
-| CVar s m x l v : Some l = s x -> Some v = m l -> comp s m (Var x) v m
-| CRec s m x e l v m' : comp s m e v m' -> m l = None -> m' l = None ->  comp s m (Rec x e) (inr (fun y : string => if string_dec x y then Some l else None)) (fun y => if loc_dec l y then Some v else m' y)
+| CVar s m x l v : s x = Some l -> m l = Some v -> comp s m x v m
+| CRec s m x e l v m' : comp s m e v m' -> m l = None -> m' l = None
+                        -> comp s m ("{" ++ x + ":=" ++ e ++ "x")%string (inr (fun y : string => if string_dec x y then Some l else None)) (fun y => if loc_dec l y then Some v else m' y)
 | CNilRec s m : comp s m Nil (inr (fun _ => None)) m
 | CField s m e v x l m' : comp s m e (inr (fun y => if string_dec x y then Some l else None)) m' -> m' l = Some v -> comp s m (Field e x) v m'
 | CAssign s m e x v m' l : comp s m e v m' -> s x = Some l -> comp s m (Assgn x e) v m'
