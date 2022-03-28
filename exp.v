@@ -36,28 +36,29 @@ Class finmap (A B : Type) :=
     update_well : forall a b f, (update_map a b f) a = Some b;
     update_shadow : forall a b c f, (update_map a c (update_map a b f)) = update_map a c f;
     update_change : forall a b c d f, a <> c -> (update_map a b (update_map c d f)) = (update_map c d (update_map a b f))}.
+
 Context `{FSL : finmap string loc}.
 Context `{FLV : finmap loc val}.
 
 Reserved Notation
-         "s ',' m '=[' e ']=>' v ',' m'"
-         (at level 40).
-
+         "s '/' m '=[' e ']=>' v '/' m'"
+         (at level 40, m at next level, e at next level, v at next level, m' at next level).
 Inductive comp : env -> mem -> string -> val -> mem -> Prop :=
-| CInt s m e n : int_of_string e = Some n -> comp s m e n m
-| CVar s m x l v : s x = Some l -> m l = Some v -> comp s m x v m
-| CRec s m x e l v m' : comp s m e v m' -> m l = None -> m' l = None
-                        -> comp s m ("{" ++ x ++ ":=" ++ e ++ "x")%string
-                               (inr (update_map x l nilmap)) (update_map l v m')
-| CNilRec s m : comp s m "{}" (inr nilmap) m
-| CField s m e v x l m' : comp s m e (inr (update_map x l nilmap)) m' -> m' l = Some v
-                          -> comp s m (e ++ "." ++ x) v m'
-| CAssign s m e x v m' l : comp s m e v m' -> s x = Some l -> comp s m (x ++ ":=" ++ e) v (update_map l v m')
-| CSeq s m1 m2 m3 e1 e2 v1 v2 : comp s m1 e1 v1 m2 -> comp s m2 e2 v2 m3 -> comp s m1 (e1 ++ ";" ++ e2) v2 m3
+| CInt s m e n : int_of_string e = Some n -> s/m =[e]=> n/m
+| CVar s m x l v : s x = Some l -> m l = Some v -> s/m =[x]=> v/m
+| CRec s m x e l v m' : s/m =[e]=> v/m' -> m l = None -> m' l = None
+                        -> s/m =[("{" ++ x ++ ":=" ++ e ++ "x")%string]=>
+                               (inr (update_map x l nilmap))/(update_map l v m')
+| CNilRec s m : s/m =["{}"]=> (inr nilmap)/m
+| CField s m e v x l m' : s/m =[e]=> (inr (update_map x l nilmap))/m' -> m' l = Some v
+                          -> s/m =[(e ++ "." ++ x)]=> v/m'
+| CAssign s m e x v m' l : s/m =[e]=> v/m' -> s x = Some l -> s/m =[(x ++ ":=" ++ e)]=> v/(update_map l v m')
+| CSeq s m1 m2 m3 e1 e2 v1 v2 : s/m1 =[e1]=> v1/m2 -> s/m2 =[e2]=> v2/m3 -> s/m1 =[(e1 ++ ";" ++ e2)]=>v2/m3
 | CLet s m1 m2 m3 e1 e2 v1 v2 l x :
-  comp s m1 e1 v1 m2 -> comp (update_map x l s) (update_map l v1 m2) e2 v2 m3
-  -> m1 l = None -> m2 l = None -> comp s m1 ("let" ++ x ++ e1 ++ e2) v2 m3.
-                                                 
+  s/m1 =[e1]=> v1/m2 -> (update_map x l s)/(update_map l v1 m2) =[e2]=> v2/m3
+  -> m1 l = None -> m2 l = None -> s/m1 =[("let" ++ x ++ e1 ++ e2)]=> v2/m3
+where "s '/' m '=[' e ']=>' v '/' m'" := (comp s m e v m').
+                                                
 
 
 
